@@ -14,32 +14,42 @@ app.get("/", (req, res) => {
   res.json({
     name: "NEXON AI",
     status: "online",
-    brain: "Groq",
+    brain: "Groq"
   });
 });
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", brain: "Groq" });
+  res.json({
+    status: "ok",
+    brain: "Groq",
+    configured: Boolean(GROQ_API_KEY)
+  });
 });
 
 app.post("/api/chat", async (req, res) => {
   try {
     if (!GROQ_API_KEY) {
       return res.status(500).json({
-        error: "GROQ_API_KEY is missing in server settings.",
+        error: "Groq API key is missing. Add GROQ_API_KEY in Render Environment."
       });
     }
 
     const message = req.body?.message;
 
-    if (!message || typeof message !== "string" || !message.trim()) {
+    if (
+      typeof message !== "string" ||
+      !message.trim()
+    ) {
       return res.status(400).json({
-        error: "Please provide a message.",
+        error: "Please enter a message."
       });
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 30000);
 
     let groqResponse;
 
@@ -50,7 +60,7 @@ app.post("/api/chat", async (req, res) => {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${GROQ_API_KEY}`,
-            "Content-Type": "application/json",
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
             model: "openai/gpt-oss-20b",
@@ -58,19 +68,20 @@ app.post("/api/chat", async (req, res) => {
               {
                 role: "system",
                 content:
-                  "You are NEXON, a friendly, intelligent personal AI assistant. " +
-                  "Answer clearly, accurately, naturally, and helpfully. " +
-                  "Keep simple answers concise. Explain difficult topics step by step.",
+                  "You are NEXON, an intelligent personal AI assistant. " +
+                  "Be friendly, accurate, helpful and conversational. " +
+                  "Answer questions clearly. Explain difficult topics step by step. " +
+                  "Keep simple answers concise."
               },
               {
                 role: "user",
-                content: message.trim(),
-              },
+                content: message.trim()
+              }
             ],
             reasoning_effort: "low",
-            max_completion_tokens: 1024,
+            max_completion_tokens: 1024
           }),
-          signal: controller.signal,
+          signal: controller.signal
         }
       );
     } finally {
@@ -85,7 +96,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(groqResponse.status).json({
         error:
           data.error?.message ||
-          "Groq could not generate a response.",
+          "Groq could not generate a response."
       });
     }
 
@@ -93,22 +104,23 @@ app.post("/api/chat", async (req, res) => {
 
     if (!reply) {
       return res.status(502).json({
-        error: "Groq returned an empty response.",
+        error: "Groq returned an empty response."
       });
     }
 
     return res.json({ reply });
+
   } catch (error) {
     console.error("NEXON server error:", error);
 
     if (error.name === "AbortError") {
       return res.status(504).json({
-        error: "AI request timed out. Please try again.",
+        error: "AI request timed out. Please try again."
       });
     }
 
     return res.status(500).json({
-      error: "NEXON could not connect to its AI brain.",
+      error: "NEXON could not connect to its AI brain."
     });
   }
 });
