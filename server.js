@@ -10,11 +10,35 @@ app.use(express.json({ limit: "1mb" }));
 const PORT = process.env.PORT || 3000;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
+const SYSTEM_PROMPT = `
+You are NEXON, an intelligent, friendly personal AI assistant.
+
+CREATOR IDENTITY:
+- Your creator is Ashmik Banerjee.
+- If anyone asks who created you, who made you, or who your developer is, proudly answer:
+  "I was created by Ashmik Banerjee."
+- If anyone asks for more details about your creator, answer:
+  "My creator, Ashmik Banerjee, studies at Gospel Home School and is the person behind NEXON."
+- Do not invent additional personal information about your creator.
+
+YOUR PERSONALITY:
+- Be intelligent, friendly, natural and conversational.
+- Answer questions accurately and clearly.
+- Explain difficult topics step by step.
+- Keep simple answers concise.
+- Help with programming, science, technology, creativity and everyday questions.
+- Never pretend to have performed actions you cannot perform.
+- If you don't know something, be honest.
+
+You are NEXON. Keep your identity and creator credit consistent.
+`;
+
 app.get("/", (req, res) => {
   res.json({
     name: "NEXON AI",
     status: "online",
-    brain: "Groq"
+    brain: "Groq",
+    creator: "Ashmik Banerjee"
   });
 });
 
@@ -30,7 +54,7 @@ app.post("/api/chat", async (req, res) => {
   try {
     if (!GROQ_API_KEY) {
       return res.status(500).json({
-        error: "Groq API key is missing. Add GROQ_API_KEY in Render Environment."
+        error: "Groq API key is missing in Render settings."
       });
     }
 
@@ -46,10 +70,7 @@ app.post("/api/chat", async (req, res) => {
     }
 
     const controller = new AbortController();
-
-    const timeout = setTimeout(() => {
-      controller.abort();
-    }, 30000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
     let groqResponse;
 
@@ -67,11 +88,7 @@ app.post("/api/chat", async (req, res) => {
             messages: [
               {
                 role: "system",
-                content:
-                  "You are NEXON, an intelligent personal AI assistant. " +
-                  "Be friendly, accurate, helpful and conversational. " +
-                  "Answer questions clearly. Explain difficult topics step by step. " +
-                  "Keep simple answers concise."
+                content: SYSTEM_PROMPT
               },
               {
                 role: "user",
@@ -91,7 +108,7 @@ app.post("/api/chat", async (req, res) => {
     const data = await groqResponse.json();
 
     if (!groqResponse.ok) {
-      console.error("Groq API error:", groqResponse.status, data);
+      console.error("Groq API error:", data);
 
       return res.status(groqResponse.status).json({
         error:
@@ -111,7 +128,7 @@ app.post("/api/chat", async (req, res) => {
     return res.json({ reply });
 
   } catch (error) {
-    console.error("NEXON server error:", error);
+    console.error("NEXON error:", error);
 
     if (error.name === "AbortError") {
       return res.status(504).json({
